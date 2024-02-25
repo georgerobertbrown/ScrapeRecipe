@@ -54,7 +54,8 @@ public class MainActivity extends Activity {
         ingredientsResult = (TextView) findViewById(R.id.editTextIngredients);
         ingredientsResult.setText("Ingredient 1\nIngredient 2");
         recipeUrl = (TextView) findViewById(R.id.textRecipeUrl);
-        recipeUrl.setText("https://thebigmansworld.com/almond-flour-biscotti/#wprm-recipe-container-39177");
+        recipeUrl.setText("https://sallysbakingaddiction.com/whole-wheat-bread/");
+                //"https://thebigmansworld.com/almond-flour-biscotti/#wprm-recipe-container-39177");
                 //"https://www.peta.org/recipes/auntie-bonnie-s-chickpea-salad/?utm_source=PETA::Google&utm_medium=Ad&utm_campaign=0422::veg::PETA::Google::SEA-Vegan-Grant::::searchad&gad_source=1&gclid=CjwKCAiAibeuBhAAEiwAiXBoJMxp2f6hu4WYiSOfGxEFFilDfchADUOA4N0LTuwYLJAXnQW2C9EPNhoCZPkQAvD_BwE");
         //"https://www.serenabakessimplyfromscratch.com/2011/05/homemade-egg-noodles.html"); //"https://www.google.com/");
 
@@ -227,12 +228,16 @@ public class MainActivity extends Activity {
 
     private ArrayList<String> findIngredients(String recipe) {
         Pattern ignore = Pattern.compile("(akes|erves|div class)");
-        Pattern singles = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E][/0-9-.]*)\\s+(oz|oz.|pound|can|small|medium|large|pint|teaspoon|tsp|tsp.|tablespoon|tbsp|tbsp.|Tbsp.|cup|pinch|stick|stalk|container|egg|clove|bunch)\\s?([A-Za-z0-9 -]+)");
-        Pattern plurals = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E][/0-9-.]*)\\s+(ounces|pounds|pints|teaspoons|tablespoons|cups|stalks|containers|eggs|cloves|bunches)\\s?([A-Za-z0-9 -]+)");
+        Pattern singles = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E] *[/0-9-.]*)\\s+(oz|oz.|pound|can|small|medium|large|pint|teaspoon|tsp|tsp.|tablespoon|tbsp|tbsp.|Tbsp.|cup|pinch|stick|stalk|container|egg|clove|bunch|whole)\\s?([A-Za-z0-9 -]+)");
+        Pattern plurals = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E] *[/0-9-.]*)\\s+(cans|ounces|pounds|pints|teaspoons|tablespoons|cups|stalks|containers|eggs|cloves|bunches)\\s?([A-Za-z0-9 -]+)");
         ArrayList<String> ingredients = new ArrayList<String>();
         String[] lines = recipe
                 .replaceAll("<br/>", System.lineSeparator())
                 .replaceAll("<p>", System.lineSeparator())
+                .replaceAll("<.*?>", "")
+                .replaceAll(" \\([0-9][0-9-]*[A-Za-z]+\\)", "") // eliminates " (240ml)" types
+                .replaceAll("([0-9\u00BC-\u00BE\u2150-\u215E][/0-9-.]*) and ([0-9\u00BC-\u00BE\u2150-\u215E][/0-9-.]*)", "$1 $2") // eliminates " 1 and 1/4 cups" types
+                .replaceAll("\\(about .*?\\)", "") // eliminates "(about 1-2)" types
                 .split(System.lineSeparator());
 
         if (ingredients.size() == 0) {
