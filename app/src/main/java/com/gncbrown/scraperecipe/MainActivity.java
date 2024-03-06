@@ -2,16 +2,21 @@ package com.gncbrown.scraperecipe;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -28,6 +33,9 @@ public class MainActivity extends Activity {
 
     private String TAG = MainActivity.class.getName();
 
+    private static Context context;
+
+    private ViewGroup mainView;
     private static boolean firstInput = true;
     private static ProgressBar progressBar;
     private static LinearLayout progressLayout;
@@ -36,7 +44,10 @@ public class MainActivity extends Activity {
     private TextView recipeUrl;
     private Button buttonGet;
     private Button buttonClear;
+    private Button buttonAlexa;
     private RetrieveUrlTask retrievalUrlTask;
+
+    private LinearLayout ingredientsLayout;
 
     private String launchType = "MAIN";
 
@@ -46,15 +57,21 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        context = getApplicationContext();
+
+        mainView = (ViewGroup) findViewById(R.id.mainLayout);
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
         progressLayout = (LinearLayout) findViewById(R.id.layoutProgress);
 
+        ingredientsLayout = (LinearLayout) findViewById(R.id.ingredientsLayout);
+
         urlResults = (TextView) findViewById(R.id.editTextResults);
-        urlResults.setText("THIS IS WHERE\nRESULTS GO");
+        urlResults.setText("");
         ingredientsResult = (TextView) findViewById(R.id.editTextIngredients);
-        ingredientsResult.setText("Ingredient 1\nIngredient 2");
+        ingredientsResult.setText("");
         recipeUrl = (TextView) findViewById(R.id.textRecipeUrl);
-        recipeUrl.setText("https://sallysbakingaddiction.com/whole-wheat-bread/");
+        recipeUrl.setText("https://www.aspicyperspective.com/old-fashioned-tomato-jam-recipe/");
+                // "https://sallysbakingaddiction.com/whole-wheat-bread/");
                 //"https://thebigmansworld.com/almond-flour-biscotti/#wprm-recipe-container-39177");
                 //"https://www.peta.org/recipes/auntie-bonnie-s-chickpea-salad/?utm_source=PETA::Google&utm_medium=Ad&utm_campaign=0422::veg::PETA::Google::SEA-Vegan-Grant::::searchad&gad_source=1&gclid=CjwKCAiAibeuBhAAEiwAiXBoJMxp2f6hu4WYiSOfGxEFFilDfchADUOA4N0LTuwYLJAXnQW2C9EPNhoCZPkQAvD_BwE");
         //"https://www.serenabakessimplyfromscratch.com/2011/05/homemade-egg-noodles.html"); //"https://www.google.com/");
@@ -102,9 +119,37 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 Log.d(TAG, "buttonClear.onClick");
                 recipeUrl.setText("");
-                ingredientsResult.setText("");
+                if (true) ingredientsLayout.removeAllViews();
+                else ingredientsResult.setText("");
                 urlResults.setText("");
                 showProgress(false);
+            }
+        });
+        buttonAlexa = (Button) findViewById(R.id.buttonAlexa);
+        buttonAlexa.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "buttonAlexa.onClick");
+                try {
+                    Intent alexaIntent = null;
+                    if (false) {
+                        alexaIntent = context.getPackageManager().getLaunchIntentForPackage("com.amazon.dee.app");
+                    } else {
+                        alexaIntent = new Intent("android.intent.action.ASSIST");
+                        alexaIntent.setPackage("com.amazon.dee.app");
+                    }
+                    if (alexaIntent != null) {
+                        alexaIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT);
+                        context.startActivity(alexaIntent);
+                    } else {
+                        Toast.makeText(context, "Alexa app not installed?",
+                                Toast.LENGTH_LONG).show();
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to launch Alexa: " + e.getMessage());
+                    Toast.makeText(context, "Failed to launch Alexa: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                }
             }
         });
 
@@ -196,15 +241,31 @@ public class MainActivity extends Activity {
         @Override
         protected void onPostExecute(String result) {
             Log.d(TAG, "RetrieveUrlTask.onPostExecute; result=" + result);
+            // TODO create checkbox items
+            if (true)
+                ingredientsLayout.removeAllViews();
             firstInput = true;
             buttonGet.setText("Get");
             if (result != null) {
                 // Display the retrieved contents in the EditText
                 urlResults.setText("Analyzing...");
-                ArrayList<String> ingredients = findIngredients(result);
+                mainView.invalidate();
+                mainView.requestLayout();
                 urlResults.setText(result);
-                ingredientsResult.setText(ingredients.stream().collect(
-                        Collectors.joining("\n")));
+
+                ArrayList<String> ingredients = findIngredients(result);
+                if (true) {
+                    ingredients.forEach((String ingredient) -> {
+                        CheckBox cb = new CheckBox(context);
+                        cb.setText(ingredient);
+                        cb.setTextColor(Color.WHITE);
+                        ingredientsLayout.addView(cb);
+                        Log.d(TAG, "ADDED checkbox " + ingredient);
+                    });
+                } else {
+                    ingredientsResult.setText(ingredients.stream().collect(
+                            Collectors.joining("\n")));
+                }
             }
             showProgress(false); //progressBar.setVisibility(View.INVISIBLE);
         }
@@ -228,8 +289,7 @@ public class MainActivity extends Activity {
 
     private ArrayList<String> findIngredients(String recipe) {
         Pattern ignore = Pattern.compile("(akes|erves|div class)");
-        Pattern singles = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E] *[/0-9-.]*)\\s+(oz|oz.|pound|can|small|medium|large|pint|teaspoon|tsp|tsp.|tablespoon|tbsp|tbsp.|Tbsp.|cup|pinch|stick|stalk|container|egg|clove|bunch|whole)\\s?([A-Za-z0-9 -]+)");
-        Pattern plurals = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E] *[/0-9-.]*)\\s+(cans|ounces|pounds|pints|teaspoons|tablespoons|cups|stalks|containers|eggs|cloves|bunches)\\s?([A-Za-z0-9 -]+)");
+        Pattern match = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E] *[/0-9-.]*)\\s+(oz|oz.|pound[s]?|can[s]?|small|medium|large|pint[s]?|teaspoon[s]?|tsp|tsp.|tablespoon[s]?|tbsp|tbsp.|Tbsp.|cup[s]?|pinch|stick[s]?|stalk[s]?|container[s]?|egg[s]?|clove[s]?|bunch[es]?|whole)\\s?([A-Za-z0-9 -]+)");
         ArrayList<String> ingredients = new ArrayList<String>();
         String[] lines = recipe
                 .replaceAll("<br/>", System.lineSeparator())
@@ -245,54 +305,38 @@ public class MainActivity extends Activity {
             int i = 0;
             while (i < lines.length) {
                 String line = lines[i];
+                Matcher matchMatcher = match.matcher(line);
                 Matcher ignoreMatcher = ignore.matcher(line);
-                Matcher pluralsMatcher = plurals.matcher(line);
-                Matcher singleMatcher = singles.matcher(line);
 
                 boolean matched = true;
                 while (matched) {
                     int start = 0;
                     int end = 0;
-                    if (ignoreMatcher.find()) {
+                    if (!line.contains("recipeIngredient") && ignoreMatcher.find()) {
                         matched = false;
                         Log.d(TAG, "line=" + line + "; IGNORE");
-                    } else if (pluralsMatcher.find()) {
+                    } else if (matchMatcher.find()) {
                         matched = true;
                         String ingredient = String.format("%s %s of %s",
-                                pluralsMatcher.group(1),
-                                pluralsMatcher.group(2),
-                                pluralsMatcher.group(3).replaceAll("of ", ""));
+                                matchMatcher.group(1),
+                                matchMatcher.group(2),
+                                matchMatcher.group(3).replaceAll("of ", ""));
                         if (!ingredients.contains(ingredient)) {
-                            Log.d(TAG, "line=" + line + "; add plurals INGREDIENT: " + ingredient);
+                            Log.d(TAG, "line=" + line + "; add match INGREDIENT: " + ingredient);
                             ingredients.add(ingredient);
                         } else {
-                            Log.d(TAG, "line=" + line + "; already added plurals INGREDIENT: " + ingredient);
+                            Log.d(TAG, "line=" + line + "; already added match INGREDIENT: " + ingredient);
                         }
-                        start = pluralsMatcher.start();
-                        end = pluralsMatcher.end();
-                    } else if (singleMatcher.find()) {
-                        matched = true;
-                        String ingredient = String.format("%s %s of %s",
-                                singleMatcher.group(1),
-                                singleMatcher.group(2),
-                                singleMatcher.group(3).replaceAll("of ", ""));
-                        if (!ingredients.contains(ingredient)) {
-                            Log.d(TAG, "line=" + line + "; add singles INGREDIENT: " + ingredient);
-                            ingredients.add(ingredient);
-                        } else {
-                            Log.d(TAG, "line=" + line + "; already added singles INGREDIENT: " + ingredient);
-                        }
-                        start = singleMatcher.start();
-                        end = singleMatcher.end();
+                        start = matchMatcher.start();
+                        end = matchMatcher.end();
                     } else {
                         matched = false;
                     }
                     if (matched && end < line.length()) {
                         line = line.substring(end+1);
 
+                        matchMatcher = match.matcher(line);
                         ignoreMatcher = ignore.matcher(line);
-                        pluralsMatcher = plurals.matcher(line);
-                        singleMatcher = singles.matcher(line);
                     } else {
                         matched = false;
                     }

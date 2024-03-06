@@ -3,6 +3,10 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        jcenter()
+        maven {
+            url "https://aws-avs-android-sdk.s3.amazonaws.com/"
+        }
     }
 }
 dependencyResolutionManagement {
@@ -10,8 +14,13 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        jcenter()
+        maven {
+            url "https://aws-avs-android-sdk.s3.amazonaws.com/"
+        }
     }
 }
 
 rootProject.name = "Scrape Recipe"
-include ':app'
+include ':app',
+        ':libs'

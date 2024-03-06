@@ -29,14 +29,13 @@ android {
 }
 
 dependencies {
+    //implementation 'com.amazon.alexa:alexa-android-sdk:2.22.1'
+    //implementation 'com.amazon.alexa:alexa-android-client-sdk:2.22.1'
+    //implementation 'com.willblaschko.android.alexa:AlexaAndroid:2.4.2'
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
+    //implementation 'com.google.android.material:material:1.11.0'
 
     //implementation 'com.amazon.alexa:ask-sdk-android:1.7.0'
     //???implementation 'com.amazon.speech.speechlet:alexa-speechlet:2.1.0'
-
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }

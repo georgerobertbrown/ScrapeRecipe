@@ -4,8 +4,14 @@ package com.gncbrown.scraperecipe;
 //import com.amazon.alexa.ask.sdk.SkillRequest;
 //import com.amazon.alexa.ask.sdk.SkillResponse;
 
-public class MySkillClient //extends SkillClient {
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+
+
+public class MySkillClient  //extends SkillClient {
 {
+
 /*
     private ShoppingList shoppingList;
 
