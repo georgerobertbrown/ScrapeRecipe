@@ -34,7 +34,9 @@ dependencies {
     //implementation 'com.willblaschko.android.alexa:AlexaAndroid:2.4.2'
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    //implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    //implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.google.android.material:material:1.11.0'
 
     //implementation 'com.amazon.alexa:ask-sdk-android:1.7.0'
     //???implementation 'com.amazon.speech.speechlet:alexa-speechlet:2.1.0'
