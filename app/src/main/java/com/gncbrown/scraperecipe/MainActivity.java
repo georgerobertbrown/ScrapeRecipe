@@ -44,35 +44,35 @@ public class MainActivity
         extends AppCompatActivity //Activity
         implements TextToSpeech.OnInitListener {
 
-    private static String TAG = MainActivity.class.getName();
+    private static final String TAG = MainActivity.class.getName();
 
     private static Context context;
 
     public static SharedPreferences sharedPreferences;
 
-    private ViewGroup mainView;
-    private static boolean firstInput = true;
-    private static ProgressBar progressBar;
-    private static LinearLayout progressLayout;
+    private ProgressBar progressBar;
+    private LinearLayout progressLayout;
+
+    private static String resultsString;
     private TextView urlResults;
     private TextView ingredientsResult;
     private TextView recipeUrl;
     private Button buttonGet;
-    private Button buttonClear;
-    private Button buttonAlexa;
-    private Button buttonSpeak;
     private RetrieveUrlTask retrievalUrlTask;
 
     private LinearLayout ingredientsLayout;
 
-    private String launchType = "MAIN";
-
     private static TextToSpeech tts;
     private static boolean ttsSucceeded = false;
-    private static final String SPEECH_ID = "Ingredients";
     public static AudioManager audioManager;
     public static int audioMax;
     public static int savedVolume;
+    public static int savedMusicVolume;
+    public static int savedAlarmVolume;
+    public static int savedNotificationVolume;
+    public static int savedDtmfVolume;
+    public static int savedSystemVolume;
+
     public static String currentUtterance;
 
     public static final int DEFAULT_VOLUME = 5;
@@ -89,8 +89,6 @@ public class MainActivity
         context = getApplicationContext();
         sharedPreferences = getSharedPreferences("USER", MODE_PRIVATE);
 
-
-        mainView = (ViewGroup) findViewById(R.id.mainLayout);
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
         progressLayout = (LinearLayout) findViewById(R.id.layoutProgress);
 
@@ -118,15 +116,24 @@ public class MainActivity
         });
 
         audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
-        //audioMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_SYSTEM);
         audioMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        //audioMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION);
-        //audioMax = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM);
 
         ingredientsLayout = (LinearLayout) findViewById(R.id.ingredientsLayout);
 
         urlResults = (TextView) findViewById(R.id.editTextResults);
+        urlResults.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("URL Results", resultsString);
+                clipboard.setPrimaryClip(clip);
+                Toast.makeText(context, "Saved " + resultsString.length() + " chars to clipboard.",
+                        Toast.LENGTH_LONG).show();
+                return true;
+            }
+        });
         urlResults.setText("");
+
         ingredientsResult = (TextView) findViewById(R.id.editTextIngredients);
         ingredientsResult.setText("");
         recipeUrl = (TextView) findViewById(R.id.textRecipeUrl);
@@ -142,7 +149,7 @@ public class MainActivity
             public void onClick(View v) {
                 Log.d(TAG, "buttonGet.onClick");
                 String urlString = recipeUrl.getText().toString();
-                if (!urlString.equals("")) {
+                if (!urlString.isEmpty()) {
                     if (!isValidURL(urlString)) {
                         String message = "URL '" + urlString + "' is invalid.";
                         ingredientsResult.setText("");
@@ -150,7 +157,6 @@ public class MainActivity
                         alert("URL error", message);
                     } else {
                         String buttonName = buttonGet.getText().toString();
-                        firstInput = false;
                         if (buttonName.equals("Get")) {
                             showProgress(true); //progressBar.setVisibility(View.VISIBLE);
 
@@ -190,7 +196,7 @@ public class MainActivity
             }
         });
 
-        buttonClear = (Button) findViewById(R.id.buttonClear);
+        Button buttonClear = (Button) findViewById(R.id.buttonClear);
         buttonClear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -202,19 +208,15 @@ public class MainActivity
             }
         });
 
-        buttonAlexa = (Button) findViewById(R.id.buttonAlexa);
+        Button buttonAlexa = (Button) findViewById(R.id.buttonAlexa);
         buttonAlexa.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d(TAG, "buttonAlexa.onClick");
                 try {
-                    Intent alexaIntent = null;
-                    if (false) {
-                        alexaIntent = context.getPackageManager().getLaunchIntentForPackage("com.amazon.dee.app");
-                    } else {
-                        alexaIntent = new Intent("android.intent.action.ASSIST");
-                        alexaIntent.setPackage("com.amazon.dee.app");
-                    }
+                    Intent alexaIntent;
+                    alexaIntent = new Intent("android.intent.action.ASSIST");
+                    alexaIntent.setPackage("com.amazon.dee.app");
                     if (alexaIntent != null) {
                         alexaIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT);
                         context.startActivity(alexaIntent);
@@ -230,20 +232,18 @@ public class MainActivity
             }
         });
 
-        buttonSpeak = (Button) findViewById(R.id.buttonSpeak);
+        Button buttonSpeak = (Button) findViewById(R.id.buttonSpeak);
         buttonSpeak.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                savedVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
                 int speakVolume = Utils.retrieveVolumeFromPreference();
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, speakVolume, 0);
                 Log.d(TAG, "buttonSpeak.onClick; savedVolume=" + savedVolume
                         + ", audioMax=" + audioMax
                         + ", speakVolume=" + speakVolume);
                 showProgress(true);
 
                 int count = ingredientsLayout.getChildCount();
-                int spoken = 0;
+                String ingredients = "";
                 for (int i=0; i<count; i++) {
                     View ingredientView = ingredientsLayout.getChildAt(i);
                     try {
@@ -251,19 +251,18 @@ public class MainActivity
                         String ingredient = cb.getText().toString();
                         Log.d(TAG, "found ingredient=" + ingredient);
 
-                        if (cb.isChecked()) {
-                            speak("ALEXA!", "ADD " + ingredient);
-                            spoken++;
-                        }
+                        if (cb.isChecked())
+                            ingredients += "ALEXA!!! ADD " + ingredient + "\n";
                     } catch (Exception e) {
                         break;
                     }
                 }
                 // Restore volume
-                if (spoken == 0)
-                    speak("", "No items checked!");
+                if (ingredients.isEmpty())
+                    speak("No items checked!");
+                else
+                    speak(ingredients);
 
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, savedVolume, 0);
                 showProgress(false);
             }
         });
@@ -273,7 +272,7 @@ public class MainActivity
         // Get intent, action and MIME type
         Intent intent = getIntent();
         String action = intent.getAction();
-        launchType = intent.getType();
+        String launchType = intent.getType();
 
         if (Intent.ACTION_SEND.equals(action) && launchType != null) {
             Log.d(TAG, "LAUNCH action=SEND, launchType=" + launchType);
@@ -283,7 +282,6 @@ public class MainActivity
         } else {
             // Handle other intents, such as being started from the home screen
             Log.d(TAG, "LAUNCH from MAIN");
-            launchType = "MAIN";
         }
 
     }
@@ -348,11 +346,52 @@ public class MainActivity
                     + status, Toast.LENGTH_SHORT).show();
         }
     }
-    public static void speak(String announce, String what) {
-        String whatToSay = announce + " " + what;
-        Log.d(TAG, "speak; whatToSay=" + whatToSay);
+
+    public static void saveVolumes() {
+        savedMusicVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+        savedAlarmVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM);
+        savedNotificationVolume = audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION);
+        savedDtmfVolume = audioManager.getStreamVolume(AudioManager.STREAM_DTMF);
+        savedSystemVolume = audioManager.getStreamVolume(AudioManager.STREAM_SYSTEM);
+        savedVolume = savedMusicVolume;
+        Log.d(TAG, "saveVolumes; music=" + savedMusicVolume
+                + ", alarm=" + savedAlarmVolume
+                + ", notification=" + savedNotificationVolume
+                + ", dtmf=" + savedDtmfVolume
+                + ", system=" + savedSystemVolume
+            );
+    }
+
+    public static void restoreVolume() {
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, savedMusicVolume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_ALARM, savedAlarmVolume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, savedNotificationVolume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_DTMF, savedDtmfVolume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_SYSTEM, savedSystemVolume, 0);
+
+        savedVolume = savedMusicVolume;
+        Log.d(TAG, "restoreVolume; music=" + savedMusicVolume
+                + ", alarm=" + savedAlarmVolume
+                + ", notification=" + savedNotificationVolume
+                + ", dtmf=" + savedDtmfVolume
+                + ", system=" + savedSystemVolume
+        );
+    }
+
+    public static void setVolume(int volume) {
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_ALARM, volume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, volume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_DTMF, volume, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_SYSTEM, volume, 0);
+
+        Log.d(TAG, "setVolume; volume=" + volume);
+    }
+
+    public static void speak(String what) {
+        Log.d(TAG, "speak; what=" + what);
         if (tts == null || !ttsSucceeded) {
-            String message = String.format(Locale.getDefault(), "Could not speak: %s, speech not initialized.", whatToSay);
+            String message = String.format(Locale.getDefault(), "Could not speak: %s, speech not initialized.", what);
             Log.d(TAG, message);
             Toast.makeText(context.getApplicationContext(), message, Toast.LENGTH_SHORT).show();
             return;
@@ -360,31 +399,57 @@ public class MainActivity
 
         int voiceVolume = Utils.retrieveVolumeFromPreference();
         int delay = Utils.retrieveDelayFromPreference();
-        Toast.makeText(context, whatToSay, Toast.LENGTH_SHORT).show();
+        saveVolumes();
+        setVolume(voiceVolume);
 
         Bundle params = new Bundle();
-        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, announce); //SPEECH_ID);
-        double fraction = Double.valueOf(voiceVolume) / Double.valueOf(MainActivity.audioMax);
-        String volumePercentage = String.format("%.1f", fraction);
-        params.putString(TextToSpeech.Engine.KEY_PARAM_VOLUME, volumePercentage);
-        Log.d(TAG, "speak[" + voiceVolume
-                + "/" + volumePercentage
-                + "] announce=" + announce
-                + ", what=" + what);
-
-        Bundle myParams = false ? params : null;
-
-        //audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, audioMax, 0);
-        int result = tts.speak(announce, TextToSpeech.QUEUE_ADD, myParams, announce);
-        tts.playSilence(delay, TextToSpeech.QUEUE_ADD, null);
-        params.remove(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID);
         params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, what); //SPEECH_ID);
-        result = tts.speak(what, TextToSpeech.QUEUE_ADD, myParams, what);
-        tts.playSilence(delay, // 2 seconds
-                TextToSpeech.QUEUE_ADD, null);
+        float fraction = (float) voiceVolume / (float) MainActivity.audioMax;
+        String volumePercentage = String.format("%.1f", fraction);
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, fraction);
+        Log.d(TAG, "speak[" + voiceVolume
+                + "/" + volumePercentage + "%"
+                + "/" + delay
+                + "] what=" + what);
+
+        Toast.makeText(context, "Speaking " + ellipsize(what), Toast.LENGTH_SHORT).show();
+        int result = tts.speak(what,
+                TextToSpeech.QUEUE_FLUSH,
+                params, what);
+
+        if (isStillSpeakingAfter(5))
+            Log.d(TAG, "STILL speaking");
+
         if (result != TextToSpeech.SUCCESS)
             Toast.makeText(context, String.format(Locale.getDefault(),
-                    "Failed to speak %s.", whatToSay),  Toast.LENGTH_SHORT).show();
+                    "Failed to speak %s.", ellipsize(what)),  Toast.LENGTH_SHORT).show();
+        restoreVolume();
+    }
+
+    private static boolean isStillSpeakingAfter(int limit) {
+        int i = 0;
+        while (i < limit && tts.isSpeaking()) {
+            slumber(1000); // Sleep for one second
+            i++;
+        }
+        boolean stillSpeaking = tts.isSpeaking();
+        Log.d(TAG, "isStillSpeakingAfter; waited " + i + "sec vs limit " + limit
+                + ", stillSpeaking=" + stillSpeaking);
+
+        return stillSpeaking;
+    }
+
+    public static void slumber(int delay) {
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String ellipsize(String s) {
+        String firstLine = s.split("\n")[0];
+        return firstLine;
     }
 
     private class RetrieveUrlTask extends AsyncTask<String, Void, String> {
@@ -396,16 +461,13 @@ public class MainActivity
         @Override
         protected void onPostExecute(String result) {
             Log.d(TAG, "RetrieveUrlTask.onPostExecute; result=" + result);
-            // TODO create checkbox items
+            resultsString = result;
+
             ingredientsLayout.removeAllViews();
-            firstInput = true;
             buttonGet.setText("Get");
             if (result != null) {
                 // Display the retrieved contents in the EditText
                 urlResults.setText("Analyzing...");
-                mainView.invalidate();
-                mainView.requestLayout();
-                urlResults.setText(result);
 
                 ArrayList<String> ingredients = findIngredients(result);
                 ingredients.forEach((String ingredient) -> {
@@ -427,6 +489,7 @@ public class MainActivity
                     ingredientsLayout.addView(cb);
                     Log.d(TAG, "ADDED checkbox " + ingredient);
                 });
+                urlResults.setText("Retrieved " + result.length() + " chars. Long-press to copy to clipboard.");
             }
             showProgress(false); //progressBar.setVisibility(View.INVISIBLE);
         }
@@ -441,7 +504,7 @@ public class MainActivity
 
             String line;
             while ((line = bReader.readLine()) != null)
-                stringBuilder.append(line + "\n");
+                stringBuilder.append(line).append("\n");
 
             bReader.close();
         } catch (IOException e) {
@@ -472,7 +535,7 @@ public class MainActivity
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
                 String line;
                 while ((line = bufferedReader.readLine()) != null) {
-                    stringBuilder.append(line + '\n');
+                    stringBuilder.append(line).append('\n');
                 }
 
                 // Close the streams
@@ -513,61 +576,58 @@ public class MainActivity
 
     private ArrayList<String> findIngredients(String recipe) {
         Pattern ignore = Pattern.compile("(akes|erves|div class)");
-        Pattern match = Pattern.compile("([0-9\u00BC-\u00BE\u2150-\u215E] *[/0-9-.]*)\\s+(oz|oz.|pound[s]?|can[s]?|small|medium|large|pint[s]?|teaspoon[s]?|tsp|tsp.|tablespoon[s]?|tbsp|tbsp.|Tbsp.|cup[s]?|pinch|stick[s]?|stalk[s]?|container[s]?|egg[s]?|clove[s]?|bunch[es]?|whole)\\s?([A-Za-z0-9 -]+)");
+        Pattern match = Pattern.compile("([0-9¼-¾⅐-⅞] *[/0-9-.]*)\\s+(oz|oz.|pound[s]?|can[s]?|small|medium|large|pint[s]?|teaspoon[s]?|tsp|tsp.|tablespoon[s]?|tbsp|tbsp.|Tbsp.|cup[s]?|pinch|stick[s]?|stalk[s]?|container[s]?|egg[s]?|clove[s]?|bunch[es]?|whole)\\s?([A-Za-z0-9 -]+)");
         ArrayList<String> ingredients = new ArrayList<String>();
         String[] lines = recipe
                 .replaceAll("<br/>", System.lineSeparator())
                 .replaceAll("<p>", System.lineSeparator())
                 .replaceAll("<.*?>", "")
                 .replaceAll(" \\([0-9][0-9-]*[A-Za-z]+\\)", "") // eliminates " (240ml)" types
-                .replaceAll("([0-9\u00BC-\u00BE\u2150-\u215E][/0-9-.]*) and ([0-9\u00BC-\u00BE\u2150-\u215E][/0-9-.]*)", "$1 $2") // eliminates " 1 and 1/4 cups" types
+                .replaceAll("([0-9¼-¾⅐-⅞][/0-9-.]*) and ([0-9¼-¾⅐-⅞][/0-9-.]*)", "$1 $2") // eliminates " 1 and 1/4 cups" types
                 .replaceAll("\\(about .*?\\)", "") // eliminates "(about 1-2)" types
                 .split(System.lineSeparator());
 
-        if (ingredients.size() == 0) {
-            Log.d(TAG, "Reprocess without looking for INGREDIENTS");
-            int i = 0;
-            while (i < lines.length) {
-                String line = lines[i];
-                Matcher matchMatcher = match.matcher(line);
-                Matcher ignoreMatcher = ignore.matcher(line);
+        ingredients.size();
+        Log.d(TAG, "Reprocess without looking for INGREDIENTS");
+        int i = 0;
+        while (i < lines.length) {
+            String line = lines[i];
+            Matcher matchMatcher = match.matcher(line);
+            Matcher ignoreMatcher = ignore.matcher(line);
 
-                boolean matched = true;
-                while (matched) {
-                    int start = 0;
-                    int end = 0;
-                    if (!line.contains("recipeIngredient") && ignoreMatcher.find()) {
-                        matched = false;
-                        Log.d(TAG, "line=" + line + "; IGNORE");
-                    } else if (matchMatcher.find()) {
-                        matched = true;
-                        String ingredient = String.format("%s %s of %s",
-                                matchMatcher.group(1),
-                                matchMatcher.group(2),
-                                matchMatcher.group(3).replaceAll("of ", ""));
-                        if (!ingredients.contains(ingredient)) {
-                            Log.d(TAG, "line=" + line + "; add match INGREDIENT: " + ingredient);
-                            ingredients.add(ingredient);
-                        } else {
-                            Log.d(TAG, "line=" + line + "; already added match INGREDIENT: " + ingredient);
-                        }
-                        start = matchMatcher.start();
-                        end = matchMatcher.end();
+            boolean matched = true;
+            while (matched) {
+                int end = 0;
+                if (!line.contains("recipeIngredient") && ignoreMatcher.find()) {
+                    matched = false;
+                    Log.d(TAG, "line=" + line + "; IGNORE");
+                } else if (matchMatcher.find()) {
+                    matched = true;
+                    String ingredient = String.format("%s %s of %s",
+                            matchMatcher.group(1),
+                            matchMatcher.group(2),
+                            matchMatcher.group(3).replaceAll("of ", ""));
+                    if (!ingredients.contains(ingredient)) {
+                        Log.d(TAG, "line=" + line + "; add match INGREDIENT: " + ingredient);
+                        ingredients.add(ingredient);
                     } else {
-                        matched = false;
+                        Log.d(TAG, "line=" + line + "; already added match INGREDIENT: " + ingredient);
                     }
-                    if (matched && end < line.length()) {
-                        line = line.substring(end + 1);
-
-                        matchMatcher = match.matcher(line);
-                        ignoreMatcher = ignore.matcher(line);
-                    } else {
-                        matched = false;
-                    }
+                    end = matchMatcher.end();
+                } else {
+                    matched = false;
                 }
+                if (matched && end < line.length()) {
+                    line = line.substring(end + 1);
 
-                i++;
+                    matchMatcher = match.matcher(line);
+                    ignoreMatcher = ignore.matcher(line);
+                } else {
+                    matched = false;
+                }
             }
+
+            i++;
         }
 
         return ingredients;
@@ -587,12 +647,4 @@ public class MainActivity
         progressLayout.setVisibility(flag ? View.VISIBLE : View.INVISIBLE);
         progressBar.setVisibility(flag ? View.VISIBLE : View.INVISIBLE);
     }
-
-    /*
-    @Override
-    protected void onSaveInstanceState(Bundle oldInstanceState) {
-        super.onSaveInstanceState(oldInstanceState);
-        oldInstanceState.clear();
-    }
-     */
 }

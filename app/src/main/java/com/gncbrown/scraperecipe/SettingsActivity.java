@@ -4,24 +4,16 @@ import android.app.Activity;
 import android.content.Context;
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
-
-import java.util.HashMap;
 
 public class SettingsActivity extends Activity {
     private static final String TAG = "SettingsActivity";
     public static Context context;
 
-    public static AudioManager audioManager;
     private TextView volumeLabelView;
-    private SeekBar volumeSeekBarView;
     private TextView delayLabelView;
-    private SeekBar delaySeekBarView;
-    private int savedVolume;
     private int currentVolume;
 
 
@@ -33,13 +25,12 @@ public class SettingsActivity extends Activity {
 
         Log.d(TAG, "onCreate.setContentView");
         setContentView(R.layout.settings_activity);
-
         //audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         currentVolume = MainActivity.audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-        savedVolume = Utils.retrieveVolumeFromPreference();
+        int savedVolume = Utils.retrieveVolumeFromPreference();
 
         volumeLabelView = findViewById(R.id.volumeLabel);
-        volumeSeekBarView = findViewById(R.id.volumeSeekBar);
+        SeekBar volumeSeekBarView = findViewById(R.id.volumeSeekBar);
         volumeSeekBarView.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int value, boolean fromUser) {
@@ -58,12 +49,7 @@ public class SettingsActivity extends Activity {
 
                 volumeLabelView.setText(String.format("%s(%s) ", context.getResources().getString(R.string.volumeLabel), seekValue));
                 Utils.saveVolumeToPreference(seekValue);
-
-                //audioManager.setStreamVolume(AudioManager.STREAM_SYSTEM, seekValue, 0);
-                //audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, seekValue, 0);
-                MainActivity.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, seekValue, 0);
-                //audioManager.setStreamVolume(AudioManager.STREAM_ALARM, seekValue, 0);
-                MainActivity.speak(String.format("Volume level %s", seekValue), "");
+                MainActivity.speak(String.format("Volume level %s", seekValue));
             }
         });
         volumeSeekBarView.setMax(MainActivity.audioMax);
@@ -71,7 +57,7 @@ public class SettingsActivity extends Activity {
 
 
         delayLabelView = findViewById(R.id.delayLabel);
-        delaySeekBarView = findViewById(R.id.delaySeekBar);
+        SeekBar delaySeekBarView = findViewById(R.id.delaySeekBar);
         delaySeekBarView.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int value, boolean fromUser) {
@@ -90,12 +76,7 @@ public class SettingsActivity extends Activity {
 
                 delayLabelView.setText(String.format("%s(%s ms) ", context.getResources().getString(R.string.delayLabel), seekValue));
                 Utils.saveDelayToPreference(seekValue);
-
-                //audioManager.setStreamVolume(AudioManager.STREAM_SYSTEM, seekValue, 0);
-                //audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, seekValue, 0);
-                MainActivity.audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, seekValue, 0);
-                //audioManager.setStreamVolume(AudioManager.STREAM_ALARM, seekValue, 0);
-                MainActivity.speak(String.format("Delay %s milliseconds", seekValue), "");
+                MainActivity.speak(String.format("Delay %s milliseconds", seekValue));
             }
         });
         delaySeekBarView.setMax(MainActivity.DELAY_MAX);
@@ -116,12 +97,4 @@ public class SettingsActivity extends Activity {
 
         super.onDestroy();
     }
-
-    /*
-    @Override
-    protected void onSaveInstanceState(Bundle oldInstanceState) {
-        super.onSaveInstanceState(oldInstanceState);
-        oldInstanceState.clear();
-    }
-    */
 }

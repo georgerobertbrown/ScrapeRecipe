@@ -53,12 +53,12 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="left"
+                android:layout_gravity="center_horizontal"
                 android:orientation="horizontal">
 
                 <Button
                     android:id="@+id/buttonGet"
-                    android:layout_width="75dp"
+                    android:layout_width="80dp"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="3dp"
                     android:layout_marginRight="3dp"
@@ -67,7 +67,7 @@
 
                 <Button
                     android:id="@+id/buttonClear"
-                    android:layout_width="75dp"
+                    android:layout_width="80dp"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="3dp"
                     android:layout_marginRight="3dp"
@@ -76,7 +76,7 @@
 
                 <Button
                     android:id="@+id/buttonAlexa"
-                    android:layout_width="75dp"
+                    android:layout_width="80dp"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="3dp"
                     android:layout_marginRight="3dp"
@@ -85,7 +85,7 @@
 
                 <Button
                     android:id="@+id/buttonSpeak"
-                    android:layout_width="75dp"
+                    android:layout_width="80dp"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="3dp"
                     android:layout_marginRight="3dp"
@@ -117,7 +117,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:paddingTop="3dp"
-                        android:text="Ingredients (long-press to copy)"
+                        android:text="Ingredients (long-press item to copy)"
                         android:textColor="@color/white"
                         android:textSize="20sp"
                         android:textStyle="bold" />
